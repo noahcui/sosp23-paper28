@@ -1,14 +1,15 @@
 package replicant
 
 import (
+	"net"
+	"strconv"
+	"strings"
+
+	logger "github.com/sirupsen/logrus"
 	"github.com/sosp23/replicated-store/go/config"
 	"github.com/sosp23/replicated-store/go/kvstore"
 	consensusLog "github.com/sosp23/replicated-store/go/log"
 	"github.com/sosp23/replicated-store/go/multipaxos"
-	logger "github.com/sirupsen/logrus"
-	"net"
-	"strconv"
-	"strings"
 )
 
 type Replicant struct {
@@ -30,8 +31,8 @@ func NewReplicant(config config.Config) *Replicant {
 	r.peerListener, _ = net.Listen("tcp", r.ipPort)
 	r.multipaxos = multipaxos.NewMultipaxos(r.log, config)
 	numPeers := int64(len(config.Peers))
-	r.clientManager = NewClientManager(r.id, numPeers, r.multipaxos, true)
-	r.peerManager = NewClientManager(r.id, numPeers, r.multipaxos, false)
+	r.clientManager = NewClientManager(r.id, numPeers, r.multipaxos, true, r)
+	r.peerManager = NewClientManager(r.id, numPeers, r.multipaxos, false, r)
 	go r.StartPeerServer()
 	return r
 }

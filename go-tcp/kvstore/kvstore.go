@@ -1,9 +1,9 @@
 package kvstore
 
 import (
+	logger "github.com/sirupsen/logrus"
 	"github.com/sosp23/replicated-store/go/config"
 	tcp "github.com/sosp23/replicated-store/go/multipaxos/network"
-	logger "github.com/sirupsen/logrus"
 )
 
 const (
@@ -24,9 +24,7 @@ type KVStore interface {
 }
 
 func CreateStore(config config.Config) KVStore {
-	if config.Store == "rocksdb" {
-		return NewRocksDBKVStore(config.DbPath)
-	} else if config.Store == "mem" {
+	if config.Store == "mem" {
 		return NewMemKVStore()
 	} else {
 		logger.Panic("no match kvstore")

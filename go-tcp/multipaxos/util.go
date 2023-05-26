@@ -13,6 +13,7 @@ const (
 type Peer struct {
 	Id   int64
 	Stub *pb.TcpLink
+	Addr string
 }
 
 func MakePeer(addr string, channels *pb.ChannelMap) *pb.TcpLink {

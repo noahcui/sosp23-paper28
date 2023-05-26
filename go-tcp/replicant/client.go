@@ -3,11 +3,12 @@ package replicant
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/sosp23/replicated-store/go/multipaxos"
-	pb "github.com/sosp23/replicated-store/go/multipaxos/network"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/sosp23/replicated-store/go/multipaxos"
+	pb "github.com/sosp23/replicated-store/go/multipaxos/network"
 )
 
 func parse(request string) *pb.Command {
@@ -86,6 +87,7 @@ func (c *Client) handleRequest(request string) {
 
 func (c *Client) handleClientRequest(line string) {
 	command := parse(line)
+
 	if command != nil {
 		result := c.multipaxos.Replicate(command, c.id)
 		if result.Type == multipaxos.Ok {
@@ -97,7 +99,13 @@ func (c *Client) handleClientRequest(line string) {
 			if result.Type != multipaxos.SomeElseLeader {
 				panic("Result is not someone_else_leader")
 			}
-			c.Write("leader is ...")
+			// c.Write("leader is ...")
+			// If forward failed, just retry.
+			rslt := c.multipaxos.ForwardToLeader(command, c.id)
+			if rslt.Type == multipaxos.Ok {
+				return
+			}
+			c.Write("retry")
 		}
 	} else {
 		c.Write("bad command")
@@ -143,6 +151,23 @@ func (c *Client) handlePeerRequest(line string) {
 			responseJson, _ := json.Marshal(commitResponse)
 			tcpMessage, _ := json.Marshal(pb.Message{
 				Type:      uint8(pb.COMMITRESPONSE),
+				ChannelId: request.ChannelId,
+				Msg:       string(responseJson),
+			})
+			c.Write(string(tcpMessage))
+		case pb.FORWARD:
+			var forwardRequest pb.Forward
+			json.Unmarshal(msg, &forwardRequest)
+			response := c.multipaxos.Replicate(forwardRequest.Command, forwardRequest.ClientId)
+			forwardResponse := pb.ForwardResponse{
+				Type: pb.Reject,
+			}
+			if response.Type == multipaxos.Ok {
+				forwardResponse.Type = pb.Ok
+			}
+			responseJson, _ := json.Marshal(forwardResponse)
+			tcpMessage, _ := json.Marshal(pb.Message{
+				Type:      uint8(pb.FORWARDRESPONSE),
 				ChannelId: request.ChannelId,
 				Msg:       string(responseJson),
 			})

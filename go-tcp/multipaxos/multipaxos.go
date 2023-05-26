@@ -2,14 +2,15 @@ package multipaxos
 
 import (
 	"encoding/json"
-	"github.com/sosp23/replicated-store/go/config"
-	Log "github.com/sosp23/replicated-store/go/log"
-	tcp "github.com/sosp23/replicated-store/go/multipaxos/network"
-	logger "github.com/sirupsen/logrus"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	logger "github.com/sirupsen/logrus"
+	"github.com/sosp23/replicated-store/go/config"
+	Log "github.com/sosp23/replicated-store/go/log"
+	tcp "github.com/sosp23/replicated-store/go/multipaxos/network"
 )
 
 type Multipaxos struct {
@@ -29,6 +30,12 @@ type Multipaxos struct {
 
 	prepareThreadRunning int32
 	commitThreadRunning  int32
+}
+
+func (p *Multipaxos) GetPeers() []*Peer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.peers
 }
 
 func NewMultipaxos(log *Log.Log, config config.Config) *Multipaxos {
@@ -55,6 +62,7 @@ func NewMultipaxos(log *Log.Log, config config.Config) *Multipaxos {
 		multipaxos.peers[id] = &Peer{
 			Id:   int64(id),
 			Stub: MakePeer(addr, multipaxos.channels),
+			Addr: addr,
 		}
 	}
 
@@ -215,6 +223,32 @@ func (p *Multipaxos) RunPreparePhase(ballot int64) (int64,
 	}
 	p.removeChannel(channelId)
 	return -1, nil
+}
+
+func (p *Multipaxos) ForwardToLeader(command *tcp.Command, cid int64) Result {
+	leaderId := ExtractLeaderId(p.Ballot())
+	if leaderId == p.id {
+		return Result{Type: Retry, Leader: leaderId}
+	}
+	forwardmsg, _ := json.Marshal(tcp.Forward{
+		ClientId: p.id,
+		Command:  command,
+	})
+	channelId, responseChan := p.addChannel(len(p.peers))
+	go func(peer *Peer) {
+		peer.Stub.SendAwaitResponse(tcp.FORWARD,
+			channelId, string(forwardmsg))
+		logger.Infof("%v sent forward request to %v", p.id, peer.Id)
+	}(p.peers[leaderId])
+	// waiting for reply
+	response := <-responseChan
+	var forwardResponse tcp.ForwardResponse
+	json.Unmarshal([]byte(response), &forwardResponse)
+	if forwardResponse.Type == tcp.Ok {
+
+		return Result{Ok, leaderId}
+	}
+	return Result{Retry, leaderId}
 }
 
 func (p *Multipaxos) RunAcceptPhase(ballot int64, index int64,

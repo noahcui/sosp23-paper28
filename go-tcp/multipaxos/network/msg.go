@@ -32,12 +32,23 @@ const (
 	ACCEPTRESPONSE
 	COMMITREQUEST
 	COMMITRESPONSE
+	FORWARD
+	FORWARDRESPONSE
 )
 
 type Command struct {
 	Type  CommandType
 	Key   string
 	Value string
+}
+
+type Forward struct {
+	ClientId int64
+	Command  *Command
+}
+
+type ForwardResponse struct {
+	Type ResponseType
 }
 
 type Instance struct {

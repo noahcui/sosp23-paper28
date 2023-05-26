@@ -3,9 +3,9 @@ module github.com/sosp23/replicated-store/go
 go 1.19
 
 require (
-	github.com/linxGnu/grocksdb v1.7.7
+	github.com/linxGnu/grocksdb v1.7.16
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.2
 )
 
 require (

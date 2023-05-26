@@ -1,10 +1,11 @@
 package replicant
 
 import (
-	"github.com/sosp23/replicated-store/go/multipaxos"
-	logger "github.com/sirupsen/logrus"
 	"net"
 	"sync"
+
+	logger "github.com/sirupsen/logrus"
+	"github.com/sosp23/replicated-store/go/multipaxos"
 )
 
 type ClientManager struct {
@@ -14,18 +15,20 @@ type ClientManager struct {
 	mu           sync.Mutex
 	clients      map[int64]*Client
 	isFromClient bool
+	replica      *Replicant
 }
 
 func NewClientManager(id int64,
 	numPeers int64,
 	mp *multipaxos.Multipaxos,
-	isFromClient bool) *ClientManager {
+	isFromClient bool, r *Replicant) *ClientManager {
 	cm := &ClientManager{
 		nextId:       id,
 		numPeers:     numPeers,
 		multipaxos:   mp,
 		clients:      make(map[int64]*Client),
 		isFromClient: isFromClient,
+		replica:      r,
 	}
 	return cm
 }
