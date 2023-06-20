@@ -30,6 +30,8 @@ type Multipaxos struct {
 
 	prepareThreadRunning int32
 	commitThreadRunning  int32
+
+	forwardings int64
 }
 
 func (p *Multipaxos) GetPeers() []*Peer {
@@ -50,6 +52,7 @@ func NewMultipaxos(log *Log.Log, config config.Config) *Multipaxos {
 		nextChannelId:        0,
 		prepareThreadRunning: 0,
 		commitThreadRunning:  0,
+		forwardings:          0,
 	}
 	multipaxos.channels = &tcp.ChannelMap{
 		Channels: make(map[uint64]chan string),
@@ -113,8 +116,8 @@ func (p *Multipaxos) sleepForCommitInterval() {
 }
 
 func (p *Multipaxos) sleepForRandomInterval() {
-	sleepTime := p.commitInterval + p.commitInterval/2 +
-		rand.Int63n(p.commitInterval/2)
+	// sleepTime := p.commitInterval + p.commitInterval/2 + rand.Int63n(p.commitInterval/2)
+	sleepTime := p.commitInterval * 50
 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 }
 
@@ -133,6 +136,9 @@ func (p *Multipaxos) PrepareThread() {
 		for atomic.LoadInt32(&p.prepareThreadRunning) == 1 {
 			p.sleepForRandomInterval()
 			if p.receivedCommit() {
+				continue
+			}
+			if p.id != 0 {
 				continue
 			}
 			nextBallot := p.NextBallot()
@@ -226,15 +232,19 @@ func (p *Multipaxos) RunPreparePhase(ballot int64) (int64,
 }
 
 func (p *Multipaxos) ForwardToLeader(command *tcp.Command, cid int64) Result {
+	t1 := time.Now()
+
 	leaderId := ExtractLeaderId(p.Ballot())
 	if leaderId == p.id {
 		return Result{Type: Retry, Leader: leaderId}
+		// return p.Replicate(command, cid)
 	}
 	forwardmsg, _ := json.Marshal(tcp.Forward{
-		ClientId: p.id,
+		ClientId: cid,
 		Command:  command,
 	})
 	channelId, responseChan := p.addChannel(len(p.peers))
+	atomic.AddInt64(&p.forwardings, 1)
 	go func(peer *Peer) {
 		peer.Stub.SendAwaitResponse(tcp.FORWARD,
 			channelId, string(forwardmsg))
@@ -244,6 +254,9 @@ func (p *Multipaxos) ForwardToLeader(command *tcp.Command, cid int64) Result {
 	response := <-responseChan
 	var forwardResponse tcp.ForwardResponse
 	json.Unmarshal([]byte(response), &forwardResponse)
+	atomic.AddInt64(&p.forwardings, -1)
+	p.removeChannel(channelId)
+	logger.Infof("ForwardToLeader takes %v", time.Now().Sub(t1))
 	if forwardResponse.Type == tcp.Ok {
 
 		return Result{Ok, leaderId}
@@ -389,6 +402,13 @@ func (p *Multipaxos) Replay(ballot int64, log map[int64]*tcp.Instance) {
 	}
 }
 
+func (p *Multipaxos) SizeChannel() int {
+	p.channels.Lock()
+	size := len(p.channels.Channels)
+	p.channels.Unlock()
+	return size
+}
+
 func (p *Multipaxos) addChannel(numPeers int) (uint64, chan string) {
 	responseChan := make(chan string, numPeers-1)
 	channelId := atomic.AddUint64(&p.nextChannelId, 1)
@@ -528,4 +548,8 @@ func (p *Multipaxos) Commit(request tcp.CommitRequest) tcp.CommitResponse {
 
 func (p *Multipaxos) Id() int64 {
 	return p.id
+}
+
+func (p *Multipaxos) GetForwardings() int64 {
+	return atomic.LoadInt64(&p.forwardings)
 }

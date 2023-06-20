@@ -16,7 +16,7 @@ type Replicant struct {
 	id            int64
 	log           *consensusLog.Log
 	ipPort        string
-	multipaxos    *multipaxos.Multipaxos
+	Multipaxos    *multipaxos.Multipaxos
 	clientManager *ClientManager
 	peerManager   *ClientManager
 	peerListener  net.Listener
@@ -29,10 +29,10 @@ func NewReplicant(config config.Config) *Replicant {
 	r.ipPort = config.Peers[config.Id]
 	r.log = consensusLog.NewLog(kvstore.CreateStore(config))
 	r.peerListener, _ = net.Listen("tcp", r.ipPort)
-	r.multipaxos = multipaxos.NewMultipaxos(r.log, config)
+	r.Multipaxos = multipaxos.NewMultipaxos(r.log, config)
 	numPeers := int64(len(config.Peers))
-	r.clientManager = NewClientManager(r.id, numPeers, r.multipaxos, true, r)
-	r.peerManager = NewClientManager(r.id, numPeers, r.multipaxos, false, r)
+	r.clientManager = NewClientManager(r.id, numPeers, r.Multipaxos, true, r)
+	r.peerManager = NewClientManager(r.id, numPeers, r.Multipaxos, false, r)
 	go r.StartPeerServer()
 	return r
 }
@@ -74,7 +74,7 @@ func (r *Replicant) peerServerTask() {
 }
 
 func (r *Replicant) Start() {
-	r.multipaxos.Start()
+	r.Multipaxos.Start()
 	r.StartExecutorTask()
 	r.StartServerTask()
 }
@@ -83,7 +83,7 @@ func (r *Replicant) Stop() {
 	r.StopServer()
 	r.StopExecutorThread()
 	r.StopPeerServer()
-	r.multipaxos.Stop()
+	r.Multipaxos.Stop()
 }
 
 func (r *Replicant) StartServerTask() {
@@ -129,4 +129,16 @@ func (r *Replicant) StartExecutorTask() {
 func (r *Replicant) StopExecutorThread() {
 	logger.Infof("%v stopping executor thread\n", r.id)
 	r.log.Stop()
+}
+
+func (r *Replicant) LastExecuted() int64 {
+	return r.log.LastExecuted()
+}
+
+func (r *Replicant) LastIndex() int64 {
+	return r.log.LastIndex()
+}
+
+func (r *Replicant) LastCommitted() int64 {
+	return r.log.LastCommitted()
 }

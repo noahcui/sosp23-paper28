@@ -1,10 +1,11 @@
 package log
 
 import (
+	"sync"
+
+	logger "github.com/sirupsen/logrus"
 	"github.com/sosp23/replicated-store/go/kvstore"
 	tcp "github.com/sosp23/replicated-store/go/multipaxos/network"
-	logger "github.com/sirupsen/logrus"
-	"sync"
 )
 
 func IsCommitted(instance *tcp.Instance) bool {
@@ -63,6 +64,7 @@ type Log struct {
 	log                map[int64]*tcp.Instance
 	lastIndex          int64
 	lastExecuted       int64
+	lastCommitted      int64
 	globalLastExecuted int64
 	mu                 sync.Mutex
 	cvExecutable       *sync.Cond
@@ -77,6 +79,7 @@ func NewLog(s kvstore.KVStore) *Log {
 		lastIndex:          0,
 		lastExecuted:       0,
 		globalLastExecuted: 0,
+		lastCommitted:      0,
 		mu:                 sync.Mutex{},
 	}
 	l.cvExecutable = sync.NewCond(&l.mu)
@@ -89,6 +92,13 @@ func (l *Log) LastExecuted() int64 {
 	defer l.mu.Unlock()
 
 	return l.lastExecuted
+}
+
+func (l *Log) LastCommitted() int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.lastCommitted
 }
 
 func (l *Log) GlobalLastExecuted() int64 {
@@ -170,6 +180,9 @@ func (l *Log) Commit(index int64) {
 
 	if IsInProgress(instance) {
 		instance.State = tcp.Committed
+		if index > l.lastCommitted {
+			l.lastCommitted = index
+		}
 	}
 	if l.IsExecutable() {
 		l.cvExecutable.Signal()
@@ -219,6 +232,12 @@ func (l *Log) CommitUntil(leaderLastExecuted int64, ballot int64) {
 		}
 		if instance.Ballot == ballot {
 			instance.State = tcp.Committed
+			if i > l.lastCommitted {
+				l.lastCommitted = i
+			}
+		}
+		if l.IsExecutable() {
+			l.cvExecutable.Signal()
 		}
 	}
 	if l.IsExecutable() {

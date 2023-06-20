@@ -1,0 +1,171 @@
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+leader is me
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+init done
+[OVERALL], RunTime(ms), 120037
+[OVERALL], Throughput(ops/sec), 1932.0209602039372
+[TOTAL_GCS_G1_Young_Generation], Count, 24
+[TOTAL_GC_TIME_G1_Young_Generation], Time(ms), 42
+[TOTAL_GC_TIME_%_G1_Young_Generation], Time(%), 0.03498921165973825
+[TOTAL_GCS_G1_Old_Generation], Count, 0
+[TOTAL_GC_TIME_G1_Old_Generation], Time(ms), 0
+[TOTAL_GC_TIME_%_G1_Old_Generation], Time(%), 0.0
+[TOTAL_GCs], Count, 24
+[TOTAL_GC_TIME], Time(ms), 42
+[TOTAL_GC_TIME_%], Time(%), 0.03498921165973825
+[READ], Operations, 115884
+[READ], AverageLatency(us), 280262.1692209451
+[READ], MinLatency(us), 1284
+[READ], MaxLatency(us), 3278847
+[READ], 50thPercentileLatency(us), 10759
+[READ], 80thPercentileLatency(us), 33055
+[READ], 90thPercentileLatency(us), 1394687
+[READ], 95thPercentileLatency(us), 1948671
+[READ], 99thPercentileLatency(us), 2781183
+[READ], 99.9PercentileLatency(us), 3063807
+[READ], Return=OK, 115884
+[TOTAL], Operations, 231978
+[TOTAL], AverageLatency(us), 281450.1780729207
+[TOTAL], MinLatency(us), 20
+[TOTAL], MaxLatency(us), 3278847
+[TOTAL], 50thPercentileLatency(us), 10823
+[TOTAL], 80thPercentileLatency(us), 33887
+[TOTAL], 90thPercentileLatency(us), 1405951
+[TOTAL], 95thPercentileLatency(us), 1951743
+[TOTAL], 99thPercentileLatency(us), 2781183
+[TOTAL], 99.9PercentileLatency(us), 3059711
+[CLEANUP], Operations, 64
+[CLEANUP], AverageLatency(us), 35.171875
+[CLEANUP], MinLatency(us), 20
+[CLEANUP], MaxLatency(us), 109
+[CLEANUP], 50thPercentileLatency(us), 31
+[CLEANUP], 80thPercentileLatency(us), 41
+[CLEANUP], 90thPercentileLatency(us), 49
+[CLEANUP], 95thPercentileLatency(us), 56
+[CLEANUP], 99thPercentileLatency(us), 69
+[CLEANUP], 99.9PercentileLatency(us), 109
+[UPDATE], Operations, 116030
+[UPDATE], AverageLatency(us), 282791.9153667155
+[UPDATE], MinLatency(us), 1340
+[UPDATE], MaxLatency(us), 3264511
+[UPDATE], 50thPercentileLatency(us), 10887
+[UPDATE], 80thPercentileLatency(us), 34719
+[UPDATE], 90thPercentileLatency(us), 1417215
+[UPDATE], 95thPercentileLatency(us), 1954815
+[UPDATE], 99thPercentileLatency(us), 2781183
+[UPDATE], 99.9PercentileLatency(us), 3053567
+[UPDATE], Return=OK, 116030

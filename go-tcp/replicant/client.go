@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	logger "github.com/sirupsen/logrus"
 	"github.com/sosp23/replicated-store/go/multipaxos"
 	pb "github.com/sosp23/replicated-store/go/multipaxos/network"
 )
@@ -66,6 +67,8 @@ func (c *Client) Start() {
 	for {
 		request, err := c.reader.ReadString('\n')
 		if err != nil {
+			logger.Error(err, c)
+			// panic(err)
 			break
 		}
 		c.handleRequest(request)
@@ -79,7 +82,7 @@ func (c *Client) Stop() {
 
 func (c *Client) handleRequest(request string) {
 	if c.isFromClient {
-		c.handleClientRequest(request)
+		go c.handleClientRequest(request)
 	} else {
 		c.handlePeerRequest(request)
 	}
@@ -89,22 +92,26 @@ func (c *Client) handleClientRequest(line string) {
 	command := parse(line)
 
 	if command != nil {
-		result := c.multipaxos.Replicate(command, c.id)
-		if result.Type == multipaxos.Ok {
-			return
-		}
-		if result.Type == multipaxos.Retry {
-			c.Write("retry")
+		// result := c.multipaxos.Replicate(command, c.id)
+		// if result.Type == multipaxos.Ok {
+		// 	return
+		// }
+		// if result.Type == multipaxos.Retry {
+		// 	c.Write("retry")
+		ballot := c.multipaxos.Ballot()
+		if multipaxos.IsLeader(ballot, c.multipaxos.Id()) {
+			c.Write("leader is me")
 		} else {
-			if result.Type != multipaxos.SomeElseLeader {
-				panic("Result is not someone_else_leader")
-			}
+			// if result.Type != multipaxos.SomeElseLeader {
+			// 	panic("Result is not someone_else_leader")
+			// }
 			// c.Write("leader is ...")
 			// If forward failed, just retry.
 			rslt := c.multipaxos.ForwardToLeader(command, c.id)
 			if rslt.Type == multipaxos.Ok {
 				return
 			}
+			logger.Infof("forward not accepted")
 			c.Write("retry")
 		}
 	} else {
@@ -158,7 +165,18 @@ func (c *Client) handlePeerRequest(line string) {
 		case pb.FORWARD:
 			var forwardRequest pb.Forward
 			json.Unmarshal(msg, &forwardRequest)
-			response := c.multipaxos.Replicate(forwardRequest.Command, forwardRequest.ClientId)
+			// response := c.multipaxos.Replicate(forwardRequest.Command, forwardRequest.ClientId)
+			ballot := c.multipaxos.Ballot()
+			response := multipaxos.Result{
+				Type:   multipaxos.Retry,
+				Leader: multipaxos.ExtractLeaderId(ballot),
+			}
+
+			if multipaxos.IsLeader(ballot, c.multipaxos.Id()) {
+				response.Type = multipaxos.Ok
+				go c.multipaxos.Replicate(forwardRequest.Command, forwardRequest.ClientId)
+			}
+
 			forwardResponse := pb.ForwardResponse{
 				Type: pb.Reject,
 			}

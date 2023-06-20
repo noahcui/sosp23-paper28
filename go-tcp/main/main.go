@@ -2,12 +2,14 @@ package main
 
 import (
 	"flag"
-	"github.com/sosp23/replicated-store/go/config"
-	"github.com/sosp23/replicated-store/go/replicant"
-	logger "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
+
+	logger "github.com/sirupsen/logrus"
+	monitor "github.com/sosp23/replicated-store/go/Monitor"
+	"github.com/sosp23/replicated-store/go/config"
+	"github.com/sosp23/replicated-store/go/replicant"
 )
 
 func main() {
@@ -26,9 +28,11 @@ func main() {
 	if err != nil {
 		logger.Panic(err)
 	}
-
+	logger.Info("Config loaded")
 	replicant := replicant.NewReplicant(cfg)
-
+	logger.Info("Replicant started")
+	monitor := monitor.NewMonitor(replicant, "bufferinfo", -1, 10)
+	go monitor.Run()
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
