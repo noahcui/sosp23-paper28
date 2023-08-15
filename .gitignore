@@ -5,5 +5,5 @@ Cargo.lock
 target
 
 *stats*
-# bin
-# *.sh
+bin
+*.sh
