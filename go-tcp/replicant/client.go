@@ -13,25 +13,26 @@ import (
 )
 
 func parse(request string) *pb.Command {
-	substrings := strings.SplitN(strings.TrimRight(request, "\n"), " ", 3)
-	if len(substrings) < 2 {
+	substrings := strings.SplitN(strings.TrimRight(request, "\n"), " ", 4)
+	if len(substrings) < 3 {
 		return nil
 	}
-	commandType := substrings[0]
-	key := substrings[1]
+	commandID := substrings[0]
+	commandType := substrings[1]
+	key := substrings[2]
 
-	command := &pb.Command{Key: key}
+	command := &pb.Command{ID: commandID, Key: key}
 
 	if commandType == "get" {
 		command.Type = pb.Get
 	} else if commandType == "del" {
 		command.Type = pb.Del
 	} else if commandType == "put" {
-		if len(substrings) != 3 {
+		if len(substrings) != 4 {
 			return nil
 		}
 		command.Type = pb.Put
-		command.Value = substrings[2]
+		command.Value = substrings[3]
 	} else {
 		return nil
 	}
@@ -72,6 +73,7 @@ func (c *Client) Start() {
 			break
 		}
 		c.handleRequest(request)
+
 	}
 	c.manager.Stop(c.id)
 }
@@ -82,9 +84,10 @@ func (c *Client) Stop() {
 
 func (c *Client) handleRequest(request string) {
 	if c.isFromClient {
+		// fmt.Println(request)
 		go c.handleClientRequest(request)
 	} else {
-		c.handlePeerRequest(request)
+		go c.handlePeerRequest(request)
 	}
 }
 

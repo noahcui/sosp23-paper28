@@ -37,6 +37,7 @@ const (
 )
 
 type Command struct {
+	ID    string
 	Type  CommandType
 	Key   string
 	Value string

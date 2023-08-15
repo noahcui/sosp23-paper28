@@ -13,6 +13,7 @@ const (
 
 type KVResult struct {
 	Ok    bool
+	ID    string
 	Value string
 }
 

@@ -1,9 +1,9 @@
 package kvstore
 
 import (
+	logger "github.com/sirupsen/logrus"
 	"github.com/sosp23/replicated-store/go/config"
 	pb "github.com/sosp23/replicated-store/go/multipaxos/comm"
-	logger "github.com/sirupsen/logrus"
 )
 
 const (

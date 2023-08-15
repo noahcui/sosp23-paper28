@@ -45,7 +45,7 @@ func (r *Replicant) executorTask() {
 		}
 		client := r.clientManager.Get(id)
 		if client != nil {
-			client.Write(result.Value)
+			client.Write(result.ID + " " + result.Value)
 		}
 	}
 }

@@ -55,8 +55,22 @@ func (m *Monitor) getInfo() string {
 	lastIndex := m.r.LastIndex()
 	lastCommitted := m.r.LastCommitted()
 	forwardings := m.r.Multipaxos.GetForwardings()
+	forwardingLatencies := m.r.Multipaxos.GetForwardingLatencies()
+	getmean := func(latencies []time.Duration) time.Duration {
+		if len(latencies) == 0 {
+			return 0
+		}
 
-	toRet := fmt.Sprintf("%d,%d,%d,%d,%d,%d\n", timenow, challenSize, lastExecuted, lastIndex, lastCommitted, forwardings)
+		var sum time.Duration
+		for _, latency := range latencies {
+			sum += latency
+		}
+		return sum / time.Duration(len(latencies))
+	}
+
+	meanLatency := getmean(forwardingLatencies)
+
+	toRet := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d\n", timenow, challenSize, lastExecuted, lastIndex, lastCommitted, forwardings, meanLatency)
 	return toRet
 }
 
@@ -78,7 +92,7 @@ func (m *Monitor) ensureFileOpen() error {
 
 	var err error
 	m.file, err = os.OpenFile(fmt.Sprintf("%s_%d_%d.csv", m.out_path, m.fileSeq, m.r.Multipaxos.Id()), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	writeValue := "time,channel_size,last_executed,last_index,last_committed,forwardings\n"
+	writeValue := "time,channel_size,last_executed,last_index,last_committed,forwardings, forwarding_latencies\n"
 	if _, err := m.file.WriteString(writeValue); err != nil {
 		log.Printf("Failed to write to file: %v", err)
 	}

@@ -31,7 +31,9 @@ type Multipaxos struct {
 	prepareThreadRunning int32
 	commitThreadRunning  int32
 
-	forwardings int64
+	forwardLock       sync.Mutex
+	forwardings       int64
+	forwardingLatency []time.Duration
 }
 
 func (p *Multipaxos) GetPeers() []*Peer {
@@ -53,6 +55,7 @@ func NewMultipaxos(log *Log.Log, config config.Config) *Multipaxos {
 		prepareThreadRunning: 0,
 		commitThreadRunning:  0,
 		forwardings:          0,
+		forwardingLatency:    make([]time.Duration, 0),
 	}
 	multipaxos.channels = &tcp.ChannelMap{
 		Channels: make(map[uint64]chan string),
@@ -115,9 +118,13 @@ func (p *Multipaxos) sleepForCommitInterval() {
 	time.Sleep(time.Duration(p.commitInterval) * time.Millisecond)
 }
 
+func (p *Multipaxos) sleepForThrimInterval() {
+	time.Sleep(time.Duration(p.commitInterval) * time.Millisecond * 100)
+}
+
 func (p *Multipaxos) sleepForRandomInterval() {
 	// sleepTime := p.commitInterval + p.commitInterval/2 + rand.Int63n(p.commitInterval/2)
-	sleepTime := p.commitInterval * 50
+	sleepTime := p.commitInterval * 5
 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 }
 
@@ -166,8 +173,28 @@ func (p *Multipaxos) CommitThread() {
 			if !IsLeader(ballot, p.id) {
 				break
 			}
-			gle = p.RunCommitPhase(ballot, gle)
+			go p.RunCommitPhase(ballot, gle)
 			p.sleepForCommitInterval()
+		}
+	}
+}
+
+func (p *Multipaxos) ThrimThread() {
+	for atomic.LoadInt32(&p.commitThreadRunning) == 1 {
+		p.mu.Lock()
+		for atomic.LoadInt32(&p.commitThreadRunning) == 1 && !IsLeader(p.Ballot(), p.id) {
+			p.cvLeader.Wait()
+		}
+		p.mu.Unlock()
+
+		gle := p.log.GlobalLastExecuted()
+		for atomic.LoadInt32(&p.commitThreadRunning) == 1 {
+			ballot := p.Ballot()
+			if !IsLeader(ballot, p.id) {
+				break
+			}
+			gle = p.RunCommitPhase(ballot, gle)
+			p.sleepForThrimInterval()
 		}
 	}
 }
@@ -256,7 +283,9 @@ func (p *Multipaxos) ForwardToLeader(command *tcp.Command, cid int64) Result {
 	json.Unmarshal([]byte(response), &forwardResponse)
 	atomic.AddInt64(&p.forwardings, -1)
 	p.removeChannel(channelId)
-	logger.Infof("ForwardToLeader takes %v", time.Now().Sub(t1))
+	latency := time.Since(t1)
+	go p.forwardingLatencyAppend(latency)
+	logger.Infof("ForwardToLeader takes %v", latency)
 	if forwardResponse.Type == tcp.Ok {
 
 		return Result{Ok, leaderId}
@@ -463,6 +492,7 @@ func (p *Multipaxos) StartCommitThread() {
 	}
 	atomic.StoreInt32(&p.commitThreadRunning, 1)
 	go p.CommitThread()
+	go p.ThrimThread()
 }
 
 func (p *Multipaxos) StopCommitThread() {
@@ -552,4 +582,19 @@ func (p *Multipaxos) Id() int64 {
 
 func (p *Multipaxos) GetForwardings() int64 {
 	return atomic.LoadInt64(&p.forwardings)
+}
+
+func (p *Multipaxos) GetForwardingLatencies() []time.Duration {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	to_return := p.forwardingLatency
+	// Clear the forwarding latency
+	p.forwardingLatency = make([]time.Duration, 0)
+	return to_return
+}
+
+func (p *Multipaxos) forwardingLatencyAppend(to_append time.Duration) {
+	p.forwardLock.Lock()
+	defer p.forwardLock.Unlock()
+	p.forwardingLatency = append(p.forwardingLatency, to_append)
 }

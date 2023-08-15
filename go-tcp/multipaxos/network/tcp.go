@@ -2,10 +2,13 @@ package network
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"net/textproto"
 	"sync"
+	"time"
 )
 
 type Message struct {
@@ -19,13 +22,40 @@ type ChannelMap struct {
 	Channels map[uint64]chan string
 }
 
+// func handleOutgoingRequests(stream net.Conn, requestChan chan string) {
+// 	for request := range requestChan {
+// 		request = request + "\n"
+// 		requestBuffer := []byte(request)
+// 		_, err := stream.Write(requestBuffer)
+// 		if err != nil {
+// 			return
+// 		}
+// 	}
+// }
+
 func handleOutgoingRequests(stream net.Conn, requestChan chan string) {
+	const writeTimeout = 50 * time.Millisecond // TODO: go to config at sometime
+
 	for request := range requestChan {
 		request = request + "\n"
 		requestBuffer := []byte(request)
-		_, err := stream.Write(requestBuffer)
-		if err != nil {
-			return
+
+		ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
+		defer cancel()
+
+		done := make(chan bool, 1)
+		go func() {
+			_, err := stream.Write(requestBuffer)
+			if err != nil {
+				log.Printf("Failed to write to stream: %v", err)
+			}
+			done <- true
+		}()
+
+		select {
+		case <-ctx.Done():
+			log.Printf("Request timed out: %v", ctx.Err())
+		case <-done:
 		}
 	}
 }

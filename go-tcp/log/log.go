@@ -206,6 +206,7 @@ func (l *Log) Execute() (int64, *kvstore.KVResult) {
 		logger.Panicf("Instance at Index %v empty\n", l.lastExecuted+1)
 	}
 	result := kvstore.Execute(instance.Command, l.kvStore)
+	result.ID = instance.Command.ID
 	instance.State = tcp.Executed
 	l.lastExecuted += 1
 	return instance.ClientId, &result
